@@ -3,7 +3,12 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { MapPin, Users, Car, User, Check, ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react'
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { MapPin, Users, Car, User, Check, ChevronLeft, ChevronRight, Minus, Plus, Loader2 } from "lucide-react"
 
 interface VehicleData {
   type: string
@@ -13,63 +18,8 @@ interface VehicleData {
   maxBaggage: number
   maxCarSeats: number
   icon: React.ReactNode
+  image?: string
 }
-
-const vehicles: VehicleData[] = [
-  {
-    type: "Sedan",
-    title: "Berlina",
-    description: "Mercedes Classe E",
-    maxPassengers: 3,
-    maxBaggage: 3,
-    maxCarSeats: 1,
-    icon: <Car className="w-8 h-8" />,
-  },
-  {
-    type: "Sedan VIP",
-    title: "Berlina Executive",
-    description: "Mercedes Classe S",
-    maxPassengers: 3,
-    maxBaggage: 3,
-    maxCarSeats: 1,
-    icon: <Car className="w-8 h-8" />,
-  },
-  {
-    type: "Minivan",
-    title: "Minivan",
-    description: "Mercedes Classe V",
-    maxPassengers: 7,
-    maxBaggage: 12,
-    maxCarSeats: 3,
-    icon: (
-      <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7" />
-        <path d="M3 7l2-4h14l2 4" />
-        <circle cx="7" cy="17" r="2" />
-        <circle cx="17" cy="17" r="2" />
-        <path d="M9 7v6" />
-        <path d="M15 7v6" />
-      </svg>
-    ),
-  },
-  {
-    type: "Van",
-    title: "Van",
-    description: "Mercedes Vito/Sprinter",
-    maxPassengers: 8,
-    maxBaggage: 15,
-    maxCarSeats: 3,
-    icon: (
-      <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M3 6v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6" />
-        <path d="M3 6l3-3h12l3 3" />
-        <circle cx="7" cy="17" r="2" />
-        <circle cx="17" cy="17" r="2" />
-        <rect x="7" y="6" width="10" height="8" />
-      </svg>
-    ),
-  },
-]
 
 const steps = [
   { id: 1, label: "Dettagli Viaggio", icon: MapPin },
@@ -114,27 +64,31 @@ function QuantitySelector({
 
   return (
     <div>
-      <label className="block mb-2 text-sm font-medium text-gray-700">{label}</label>
+      <Label className="block mb-2">{label}</Label>
       <div className="flex items-center space-x-3">
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={handleDecrement}
           disabled={isDecrementDisabled}
-          className="h-10 w-10 p-0 flex items-center justify-center bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="h-10 w-10 p-0 flex items-center justify-center bg-transparent"
         >
           <Minus className="h-4 w-4" />
-        </button>
+        </Button>
         <div className="flex items-center justify-center min-w-[3rem] h-10 px-3 border border-gray-300 rounded-md bg-white">
           <span className="text-sm font-medium">{value}</span>
         </div>
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={handleIncrement}
           disabled={isIncrementDisabled}
-          className="h-10 w-10 p-0 flex items-center justify-center bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="h-10 w-10 p-0 flex items-center justify-center bg-transparent"
         >
           <Plus className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
       {helperText && <p className="text-sm text-gray-600 mt-1">{helperText}</p>}
     </div>
@@ -143,6 +97,8 @@ function QuantitySelector({
 
 export default function TaxiBookingForm() {
   const [currentStep, setCurrentStep] = useState(1)
+  const [vehicles, setVehicles] = useState<VehicleData[]>([])
+  const [vehiclesLoading, setVehiclesLoading] = useState(true)
   const [formData, setFormData] = useState({
     pickupAddress: "",
     dropoffAddress: "",
@@ -163,11 +119,35 @@ export default function TaxiBookingForm() {
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
+  // Fetch vehicles from Webflow
+  useEffect(() => {
+    async function fetchVehicles() {
+      try {
+        setVehiclesLoading(true)
+        const response = await fetch("/api/vehicles")
+        if (response.ok) {
+          const vehicleData = await response.json()
+          setVehicles(vehicleData)
+        } else {
+          console.error("Failed to fetch vehicles")
+        }
+      } catch (error) {
+        console.error("Error fetching vehicles:", error)
+      } finally {
+        setVehiclesLoading(false)
+      }
+    }
+
+    fetchVehicles()
+  }, [])
+
   // Get selected vehicle data
   const selectedVehicle = vehicles.find((v) => v.type === formData.vehicleType)
 
   // Auto-select first suitable vehicle when passengers change
   useEffect(() => {
+    if (vehicles.length === 0) return
+
     const passengerCount = formData.passengers
     const suitableVehicles = vehicles.filter((vehicle) => passengerCount <= vehicle.maxPassengers)
 
@@ -179,7 +159,7 @@ export default function TaxiBookingForm() {
     } else {
       setFormData((prev) => ({ ...prev, vehicleType: "" }))
     }
-  }, [formData.passengers])
+  }, [formData.passengers, vehicles])
 
   // Auto-adjust car seats and baggage when vehicle changes
   useEffect(() => {
@@ -365,49 +345,45 @@ export default function TaxiBookingForm() {
           <div className="space-y-6">
             <h3 className="text-lg font-semibold mb-4">Dettagli Viaggio</h3>
             <div>
-              <label htmlFor="pickupAddress" className="block text-sm font-medium text-gray-700 mb-1">Indirizzo di Partenza</label>
-              <input
+              <Label htmlFor="pickupAddress">Indirizzo di Partenza</Label>
+              <Input
                 id="pickupAddress"
-                type="text"
                 value={formData.pickupAddress}
                 onChange={(e) => updateFormData("pickupAddress", e.target.value)}
                 placeholder="Inserisci indirizzo di partenza"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
               />
             </div>
             <div>
-              <label htmlFor="dropoffAddress" className="block text-sm font-medium text-gray-700 mb-1">Indirizzo di Arrivo</label>
-              <input
+              <Label htmlFor="dropoffAddress">Indirizzo di Arrivo</Label>
+              <Input
                 id="dropoffAddress"
-                type="text"
                 value={formData.dropoffAddress}
                 onChange={(e) => updateFormData("dropoffAddress", e.target.value)}
                 placeholder="Inserisci indirizzo di arrivo"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="pickupDate" className="block text-sm font-medium text-gray-700 mb-1">Data di Partenza</label>
-                <input
+                <Label htmlFor="pickupDate">Data di Partenza</Label>
+                <Input
                   id="pickupDate"
                   type="date"
                   value={formData.pickupDate}
                   onChange={(e) => updateFormData("pickupDate", e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${validationErrors.pickupDate ? "border-red-500" : "border-gray-300"}`}
+                  className={validationErrors.pickupDate ? "border-red-500" : ""}
                 />
                 {validationErrors.pickupDate && (
                   <p className="text-red-500 text-sm mt-1">{validationErrors.pickupDate}</p>
                 )}
               </div>
               <div>
-                <label htmlFor="pickupTime" className="block text-sm font-medium text-gray-700 mb-1">Orario di Partenza</label>
-                <input
+                <Label htmlFor="pickupTime">Orario di Partenza</Label>
+                <Input
                   id="pickupTime"
                   type="time"
                   value={formData.pickupTime}
                   onChange={(e) => updateFormData("pickupTime", e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${validationErrors.pickupTime ? "border-red-500" : "border-gray-300"}`}
+                  className={validationErrors.pickupTime ? "border-red-500" : ""}
                 />
                 {validationErrors.pickupTime && (
                   <p className="text-red-500 text-sm mt-1">{validationErrors.pickupTime}</p>
@@ -438,57 +414,65 @@ export default function TaxiBookingForm() {
             />
 
             <div>
-              <label className="block mb-4 text-sm font-medium text-gray-700">Vettura</label>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {vehicles.map((vehicle) => {
-                  const isDisabled = isVehicleDisabled(vehicle)
-                  const isSelected = formData.vehicleType === vehicle.type
-                  return (
-                    <div key={vehicle.type} className="relative">
-                      <input
-                        type="radio"
-                        id={vehicle.type}
-                        name="vehicleType"
-                        value={vehicle.type}
-                        checked={isSelected}
-                        disabled={isDisabled}
-                        onChange={(e) => updateFormData("vehicleType", e.target.value)}
-                        className="sr-only"
-                      />
-                      <label
-                        htmlFor={vehicle.type}
-                        className={`
-                          flex flex-col items-center justify-center p-4 border-2 rounded-lg cursor-pointer transition-all
-                          ${
-                            isDisabled
-                              ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
-                              : isSelected
-                                ? "border-amber-700 bg-amber-50 text-amber-700"
-                                : "border-gray-200 hover:border-gray-300 text-gray-600"
-                          }
-                        `}
-                      >
-                        <div className={`mb-3 ${isDisabled ? "text-gray-300" : isSelected ? "text-amber-700" : "text-gray-600"}`}>
-                          {vehicle.icon}
-                        </div>
-                        <div className="text-center">
-                          <div className={`font-medium text-sm ${isDisabled ? "text-gray-400" : "text-gray-900"}`}>
-                            {vehicle.title}
+              <Label className="block mb-4">Vettura</Label>
+              {vehiclesLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                  <span>Caricamento veicoli...</span>
+                </div>
+              ) : (
+                <RadioGroup
+                  value={formData.vehicleType}
+                  onValueChange={(value) => updateFormData("vehicleType", value)}
+                  className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+                >
+                  {vehicles.map((vehicle) => {
+                    const isDisabled = isVehicleDisabled(vehicle)
+                    return (
+                      <div key={vehicle.type} className="relative">
+                        <RadioGroupItem
+                          value={vehicle.type}
+                          id={vehicle.type}
+                          disabled={isDisabled}
+                          className="peer sr-only"
+                        />
+                        <Label
+                          htmlFor={vehicle.type}
+                          className={`
+                            flex flex-col items-center justify-center p-4 border-2 rounded-lg cursor-pointer transition-all
+                            ${
+                              isDisabled
+                                ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                                : "border-gray-200 hover:border-gray-300 peer-data-[state=checked]:border-amber-700 peer-data-[state=checked]:bg-amber-50"
+                            }
+                          `}
+                        >
+                          <div
+                            className={`mb-3 ${
+                              isDisabled ? "text-gray-300" : "text-gray-600 peer-data-[state=checked]:text-amber-700"
+                            }`}
+                          >
+                            {vehicle.icon}
                           </div>
-                          <div className={`text-xs mt-1 ${isDisabled ? "text-gray-300" : "text-gray-600"}`}>
-                            {vehicle.maxPassengers} pax max
+                          <div className="text-center">
+                            <div className={`font-medium text-sm ${isDisabled ? "text-gray-400" : "text-gray-900"}`}>
+                              {vehicle.title}
+                            </div>
+                            <div className={`text-xs mt-1 ${isDisabled ? "text-gray-300" : "text-gray-600"}`}>
+                              {vehicle.maxPassengers} pax max
+                            </div>
                           </div>
-                        </div>
-                        {isDisabled && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded-lg">
-                            <span className="text-xs text-gray-500 font-medium">Non disponibile</span>
-                          </div>
-                        )}
-                      </label>
-                    </div>
-                  )
-                })}
-              </div>
+                          {isDisabled && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded-lg">
+                              <span className="text-xs text-gray-500 font-medium">Non disponibile</span>
+                            </div>
+                          )}
+                        </Label>
+                      </div>
+                    )
+                  })}
+                </RadioGroup>
+              )}
               {validationErrors.vehicleType && (
                 <p className="text-red-500 text-sm mt-2">{validationErrors.vehicleType}</p>
               )}
@@ -509,9 +493,9 @@ export default function TaxiBookingForm() {
                   }}
                   className="rounded border-gray-300"
                 />
-                <label htmlFor="baggageUnsure" className="text-sm">
+                <Label htmlFor="baggageUnsure" className="text-sm">
                   Non sono sicuro del numero di bagagli
-                </label>
+                </Label>
               </div>
 
               {!formData.baggageUnsure && (
@@ -557,21 +541,20 @@ export default function TaxiBookingForm() {
                   onChange={(e) => updateFormData("assistenzaStazione", e.target.checked)}
                   className="rounded border-gray-300"
                 />
-                <label htmlFor="assistenzaStazione" className="text-sm">
+                <Label htmlFor="assistenzaStazione" className="text-sm">
                   Assistenza in stazione (+€10)
-                </label>
+                </Label>
               </div>
             </div>
 
             <div>
-              <label htmlFor="additionalNotes" className="block text-sm font-medium text-gray-700 mb-1">Note aggiuntive o richieste speciali</label>
-              <textarea
+              <Label htmlFor="additionalNotes">Note aggiuntive o richieste speciali</Label>
+              <Textarea
                 id="additionalNotes"
                 value={formData.additionalNotes}
                 onChange={(e) => updateFormData("additionalNotes", e.target.value)}
                 placeholder="Specifica dettagli sui bagagli se non sei sicuro, oppure inserisci altre richieste speciali per il tuo viaggio. Ricorda: tutti i dettagli possono essere confermati e aggiustati prima del viaggio!"
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
               />
             </div>
           </div>
@@ -583,54 +566,52 @@ export default function TaxiBookingForm() {
             <h3 className="text-lg font-semibold mb-4">Info Contatti</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
-                <input
+                <Label htmlFor="firstName">Nome</Label>
+                <Input
                   id="firstName"
-                  type="text"
                   value={formData.firstName}
                   onChange={(e) => updateFormData("firstName", e.target.value)}
                   placeholder="Mario"
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${validationErrors.firstName ? "border-red-500" : "border-gray-300"}`}
+                  className={validationErrors.firstName ? "border-red-500" : ""}
                 />
                 {validationErrors.firstName && (
                   <p className="text-red-500 text-sm mt-1">{validationErrors.firstName}</p>
                 )}
               </div>
               <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">Cognome</label>
-                <input
+                <Label htmlFor="lastName">Cognome</Label>
+                <Input
                   id="lastName"
-                  type="text"
                   value={formData.lastName}
                   onChange={(e) => updateFormData("lastName", e.target.value)}
                   placeholder="Rossi"
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${validationErrors.lastName ? "border-red-500" : "border-gray-300"}`}
+                  className={validationErrors.lastName ? "border-red-500" : ""}
                 />
                 {validationErrors.lastName && <p className="text-red-500 text-sm mt-1">{validationErrors.lastName}</p>}
               </div>
               <div>
-                <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
-                <input
+                <Label htmlFor="phoneNumber">Telefono</Label>
+                <Input
                   id="phoneNumber"
                   type="tel"
                   value={formData.phoneNumber}
                   onChange={(e) => updateFormData("phoneNumber", e.target.value)}
                   placeholder="+39 333 1234567"
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${validationErrors.phoneNumber ? "border-red-500" : "border-gray-300"}`}
+                  className={validationErrors.phoneNumber ? "border-red-500" : ""}
                 />
                 {validationErrors.phoneNumber && (
                   <p className="text-red-500 text-sm mt-1">{validationErrors.phoneNumber}</p>
                 )}
               </div>
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
+                <Label htmlFor="email">Email</Label>
+                <Input
                   id="email"
                   type="email"
                   value={formData.email}
                   onChange={(e) => updateFormData("email", e.target.value)}
                   placeholder="mario.rossi@esempio.com"
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${validationErrors.email ? "border-red-500" : "border-gray-300"}`}
+                  className={validationErrors.email ? "border-red-500" : ""}
                 />
                 {validationErrors.email && <p className="text-red-500 text-sm mt-1">{validationErrors.email}</p>}
               </div>
@@ -710,30 +691,31 @@ export default function TaxiBookingForm() {
 
         {/* Navigation */}
         <div className="flex justify-between mt-8">
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={prevStep}
             disabled={currentStep === 1}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 bg-transparent"
           >
             <ChevronLeft className="w-4 h-4" />
             Precedente
-          </button>
+          </Button>
 
           {currentStep < 4 ? (
-            <button
+            <Button
               type="button"
               onClick={nextStep}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-700 text-white rounded-md hover:bg-amber-800"
+              className="flex items-center gap-2 bg-amber-700 hover:bg-amber-800"
             >
               Successivo
               <ChevronRight className="w-4 h-4" />
-            </button>
+            </Button>
           ) : (
-            <button type="submit" className="flex items-center gap-2 px-4 py-2 bg-amber-700 text-white rounded-md hover:bg-amber-800">
+            <Button type="submit" className="flex items-center gap-2 bg-amber-700 hover:bg-amber-800">
               <Car className="w-4 h-4" />
               Prenota Taxi
-            </button>
+            </Button>
           )}
         </div>
       </form>
